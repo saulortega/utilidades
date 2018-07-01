@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"database/sql"
 	"errors"
+	"net/http"
 	"time"
 )
 
@@ -75,14 +76,14 @@ func Ingreso(nombreBaseBD string, r *http.Request, BDG *sql.DB, RSAPrivateKey *r
 
 func Sesión(nombreBaseBD string, r *http.Request, BD *sql.DB, RSAPublicKey *rsa.PublicKey) (*Datos, error) {
 	var datos = new(Datos)
-	var hash string
+	//var hash string
 
 	_, claims, err := ComprobarToken(r, RSAPublicKey)
 	if err != nil {
 		return datos, err
 	}
 
-	datos.LlaveUsuario, datos.LlaveEntidad, hash, err = datosSegúnLlaveUsuario(BD, claims.Iden)
+	datos.LlaveUsuario, datos.LlaveEntidad, _, err = datosSegúnLlaveUsuario(BD, claims.Iden)
 	if err != nil {
 		return datos, err
 	}
