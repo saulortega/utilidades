@@ -116,3 +116,11 @@ func SQLBúsqueda(columnas []string, palabras []string, orAnd string) string {
 }
 
 // ------------ por aquí voy ---------------- crear paquete nuevo "filtros". recibir tipo Filtro según los tipos de datos sql, etc ..
+
+func NombrePropio(nom string) string {
+	nom = regexp.MustCompile(`\s+`).ReplaceAllString(nom, " ")
+	nom = strings.TrimSpace(nom)
+	nom = strings.ToLower(nom)
+	nom = strings.Title(nom)
+	return nom
+}
