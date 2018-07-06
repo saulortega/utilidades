@@ -1,13 +1,14 @@
 package filtro
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
 const (
-	columnaString int = iota
+	columnaString int = iota + 1
 	columnaInt64
 	columnaBool
 )
@@ -18,15 +19,15 @@ type Columna struct {
 }
 
 func String(cols ...string) []Columna {
-	return columnasTipo(columnaString, cols)
+	return columnasTipo(columnaString, cols...)
 }
 
 func Int64(cols ...string) []Columna {
-	return columnasTipo(columnaInt64, cols)
+	return columnasTipo(columnaInt64, cols...)
 }
 
 func Bool(cols ...string) []Columna {
-	return columnasTipo(columnaBool, cols)
+	return columnasTipo(columnaBool, cols...)
 }
 
 func columnasTipo(tipo int, cols ...string) []Columna {
@@ -65,7 +66,7 @@ func VlrsString(r *http.Request, col string) []string {
 		vlrs = append(vlrs, val)
 	}
 
-	return vlrs, nil
+	return vlrs
 }
 
 func VlrsInt64(r *http.Request, col string) ([]int64, error) {
@@ -102,12 +103,12 @@ func VlrBool(r *http.Request, col string) (bool, bool, error) {
 
 // Sólo valores mayores o iguales a cero.
 func VlrsInt64P(r *http.Request, col string) ([]int64, error) {
-	return int64Restringido(r, col, 0)
+	return vlrsInt64Restringido(r, col, 0)
 }
 
 // Sólo valores mayores a cero.
 func VlrsInt64PNZ(r *http.Request, col string) ([]int64, error) {
-	return int64Restringido(r, col, 1)
+	return vlrsInt64Restringido(r, col, 1)
 }
 
 func vlrsInt64Restringido(r *http.Request, col string, min int) ([]int64, error) {
@@ -117,7 +118,7 @@ func vlrsInt64Restringido(r *http.Request, col string, min int) ([]int64, error)
 	}
 
 	for _, in := range vlrs {
-		if in < min {
+		if in < int64(min) {
 			return vlrs, errors.New("Valores no válidos para el parámetro «" + col + "»")
 		}
 	}

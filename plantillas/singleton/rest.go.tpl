@@ -1,10 +1,6 @@
 import (
-	//"database/sql"
-	//"encoding/json"
 	"errors"
-	//"fmt"
-	"gopkg.in/volatiletech/null.v7"
-	"log"
+	"github.com/volatiletech/null"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -19,15 +15,12 @@ func parseBoolFromForm(r *http.Request, field string, errorOnBlank bool) (bool, 
 	var vc bool
 
 	if vo == "" {
-		if errorOnBlank {
-			err = errors.New("field «"+field+"» can not be blank")
-		}
-		return vc, err
+		return vc, errorCampoVacíoSiNoNulo(field, errorOnBlank)
 	}
 
 	vc, err = strconv.ParseBool(vo)
 	if err != nil {
-		err = errors.New("field «"+field+"» has a wrong value")
+		err = errorValorErróneo(field)
 	}
 
 	return vc, err
@@ -39,15 +32,12 @@ func parseIntFromForm(r *http.Request, field string, errorOnBlank bool) (int, er
 	var vc int
 
 	if vo == "" {
-		if errorOnBlank {
-			err = errors.New("field «"+field+"» can not be blank")
-		}
-		return vc, err
+		return vc, errorCampoVacíoSiNoNulo(field, errorOnBlank)
 	}
 
 	vc, err = strconv.Atoi(vo)
 	if err != nil {
-		err = errors.New("field «"+field+"» has a wrong value")
+		err = errorValorErróneo(field)
 	}
 
 	return vc, err
@@ -59,15 +49,12 @@ func parseInt64FromForm(r *http.Request, field string, errorOnBlank bool) (int64
 	var vc int64
 
 	if vo == "" {
-		if errorOnBlank {
-			err = errors.New("field «"+field+"» can not be blank")
-		}
-		return vc, err
+		return vc, errorCampoVacíoSiNoNulo(field, errorOnBlank)
 	}
 
 	vc, err = strconv.ParseInt(vo, 10, 64)
 	if err != nil {
-		err = errors.New("field «"+field+"» has a wrong value")
+		err = errorValorErróneo(field)
 	}
 
 	return vc, err
@@ -79,15 +66,12 @@ func parseFloat64FromForm(r *http.Request, field string, errorOnBlank bool) (flo
 	var vc float64
 
 	if vo == "" {
-		if errorOnBlank {
-			err = errors.New("field «"+field+"» can not be blank")
-		}
-		return vc, err
+		return vc, errorCampoVacíoSiNoNulo(field, errorOnBlank)
 	}
 
 	vc, err = strconv.ParseFloat(vo, 64)
 	if err != nil {
-		err = errors.New("field «"+field+"» has a wrong value")
+		err = errorValorErróneo(field)
 	}
 
 	return vc, err
@@ -99,10 +83,7 @@ func parseTimeFromForm(r *http.Request, field string, errorOnBlank bool) (time.T
 	var vc time.Time
 
 	if vo == "" {
-		if errorOnBlank {
-			err = errors.New("field «"+field+"» can not be blank")
-		}
-		return vc, err
+		return vc, errorCampoVacíoSiNoNulo(field, errorOnBlank)
 	}
 
 	if regexp.MustCompile("^[012][0-9]:[0-5][0-9]$").MatchString(vo) {
@@ -127,7 +108,7 @@ func parseTimeFromForm(r *http.Request, field string, errorOnBlank bool) (time.T
 		pdzs := strings.Split(vo, ".")
 		vc, err = time.Parse("2006-01-02T15:04:05", pdzs[0])
 	} else {
-		err = errors.New("field «"+field+"» has a wrong value")
+		err = errorValorErróneo(field)
 	}
 
 	return vc, err
@@ -166,78 +147,6 @@ func parseNullTimeFromForm(r *http.Request, field string) (null.Time, error) {
 //
 //
 //
-//
-//
-//
-
-/*
-//func ResponseFindError(w http.ResponseWriter, id int64, err error) {
-func ResponseFindError(w http.ResponseWriter, pk interface{}, err error) {
-	w.Header().Set("X-Id", fmt.Sprintf("%v", pk))
-	if err == sql.ErrNoRows {
-		w.WriteHeader(http.StatusNotFound) //404
-		w.Write([]byte("Not found"))
-	} else {
-		w.WriteHeader(http.StatusInternalServerError) //500
-		w.Write([]byte("It could not be obtained. Try again later. [2892]"))
-	}
-
-	log.Println(err)
-}
-
-//func ResponseFindSuccess(w http.ResponseWriter, id int64, Obj interface{}) {
-func ResponseFindSuccess(w http.ResponseWriter, pk interface{}, Obj interface{}) {
-	ObjJSON, err := MarshalAndResponseOnError(w, Obj)
-	if err != nil {
-		return
-	}
-
-	w.Header().Set("X-Id", fmt.Sprintf("%v", pk))
-	w.WriteHeader(http.StatusOK)
-	w.Write(ObjJSON)
-}
-
-
-//
-//
-//
-
-func MarshalAndResponseOnError(w http.ResponseWriter, Obj interface{}) ([]byte, error) {
-	JSON, err := json.Marshal(Obj)
-	if err != nil {
-		ResponseInternalServerError(w, err, "5289")
-		return JSON, err
-	}
-
-	return JSON, nil
-}
-*/
-
-//
-//
-//
-
-/*
-func ResponseInternalServerError(w http.ResponseWriter, err error, cod string) {
-	w.WriteHeader(http.StatusInternalServerError)
-	w.Write([]byte("An error happened. Try again. ["+cod+"]"))
-	log.Println(err)
-}
-
-func ResponseBadRequest(w http.ResponseWriter, err error) {
-	w.WriteHeader(http.StatusBadRequest)
-	w.Write([]byte(err.Error()))
-}
-
-func ResponseNoID(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusBadRequest) //400
-	w.Write([]byte("ID not received or invalid"))
-}
-*/
-
-//
-//
-//
 
 func LlaveDesdeURL(r *http.Request) (string, error) {
 	p := strings.Split(r.URL.Path, "/")
@@ -268,12 +177,7 @@ func Int64KeyFromURL(r *http.Request) (int64, error) {
 	return strconv.ParseInt(s, 10, 64)
 }*/
 
-/*func GetIDFromURL(r *http.Request) (int64, error) {
-	p := strings.Split(r.URL.Path, "/")
-	s := strings.TrimSpace(p[len(p)-1])
-	return strconv.ParseInt(s, 10, 64)
-}*/
-
+/*
 func IDsFromPostForm(r *http.Request, key string) ([]int64, error) {
 	var ids = []int64{}
 
@@ -284,10 +188,9 @@ func IDsFromPostForm(r *http.Request, key string) ([]int64, error) {
 
 		id, er := strconv.ParseInt(i, 10, 64)
 		if er != nil {
-			log.Println(er)
-			return ids, errors.New("wrong id [9347]")
+			return ids, errors.New("Número erróneo. [9347]")
 		} else if id == 0 {
-			return ids, errors.New("wrong id [3962]")
+			return ids, errors.New("Número erróneo. [3962]")
 		}
 
 		ids = append(ids, id)
@@ -309,6 +212,27 @@ func NullIDsFromPostForm(r *http.Request, key string) ([]null.Int64, error) {
 	}
 
 	return nullIds, nil
+}
+*/
+
+//
+//
+//
+
+func errorValorErróneo(col string) error {
+	return errors.New("El campo «"+strings.Replace(col, "_", " ", -1)+"» tiene un valor erróneo.")
+}
+
+func errorCampoVacío(col string) error {
+	return errors.New("El campo «"+strings.Replace(col, "_", " ", -1)+"» no puede estar vacío.")
+}
+
+func errorCampoVacíoSiNoNulo(col string, noNulo bool) error {
+	if noNulo {
+		return errorCampoVacío(col)
+	}
+
+	return nil
 }
 
 //

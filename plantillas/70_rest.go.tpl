@@ -118,6 +118,10 @@ var Reconstruir{{$model.UpSingular}}AlObtener = func(exec boil.Executor, Obj *{{
 	return interface{}(Obj), nil
 }
 
+var FiltrosAlListar{{$model.UpPlural}} = func(boil.Executor, *http.Request) ([]qm.QueryMod, error) {
+	return nil, nil
+}
+
 func Obtener{{$model.UpSingular}}(exec boil.Executor, w http.ResponseWriter, r *http.Request) {
 	var obj = new({{$model.UpSingular}})
 	var Obj interface{}
@@ -380,86 +384,106 @@ func Eliminar{{$model.UpSingular}}Real(exec boil.Executor, w http.ResponseWriter
 	responder.Eliminación(w, Obj.Llave)
 }
 
+{{/*
+
+	{{- range $column := .Table.Columns -}}
+	{{- $colAlias := $alias.Column $column.Name -}}
+*/}}
+
+
 func (o *{{$model.UpSingular}}) Construir(r *http.Request) error {
 	var err error
 
 	{{range $column := .Table.Columns }}
+	{{- $colAlias := $model.Column $column.Name -}}
 	{{- if eq (titleCase $column.Name) "Llave" "FechaCreación" "FechaModificación" "FechaEliminación" "Contraseña"}}
 	{{- else -}}
 	{{- if eq $column.Type "string" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		o.{{titleCase $column.Name}} = r.FormValue("{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
+		//o.{{titleCase $column.Name}} = r.FormValue("{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
+		o.{{$colAlias}} = r.FormValue("{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 	}
 	{{else if eq $column.Type "bool" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		o.{{titleCase $column.Name}}, err = parseBoolFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
+		//o.{{titleCase $column.Name}}, err = parseBoolFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
+		o.{{$colAlias}}, err = parseBoolFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		if err != nil {
 			return err
 		}
 	}
 	{{else if eq $column.Type "int" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		o.{{titleCase $column.Name}}, err = parseIntFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
+		//o.{{titleCase $column.Name}}, err = parseIntFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
+		o.{{$colAlias}}, err = parseIntFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		if err != nil {
 			return err
 		}
 	}
 	{{else if eq $column.Type "int64" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		o.{{titleCase $column.Name}}, err = parseInt64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
+		//o.{{titleCase $column.Name}}, err = parseInt64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
+		o.{{$colAlias}}, err = parseInt64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		if err != nil {
 			return err
 		}
 	}
 	{{else if eq $column.Type "float64" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		o.{{titleCase $column.Name}}, err = parseFloat64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
+		//o.{{titleCase $column.Name}}, err = parseFloat64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
+		o.{{$colAlias}}, err = parseFloat64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		if err != nil {
 			return err
 		}
 	}
 	{{else if eq $column.Type "time.Time" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		o.{{titleCase $column.Name}}, err = parseTimeFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
+		//o.{{titleCase $column.Name}}, err = parseTimeFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
+		o.{{$colAlias}}, err = parseTimeFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		if err != nil {
 			return err
 		}
 	}
 	{{else if eq $column.Type "null.String" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		o.{{titleCase $column.Name}} = parseNullStringFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
+		//o.{{titleCase $column.Name}} = parseNullStringFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
+		o.{{$colAlias}} = parseNullStringFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 	}
 	{{else if eq $column.Type "null.Bool" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		o.{{titleCase $column.Name}}, err = parseNullBoolFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
+		//o.{{titleCase $column.Name}}, err = parseNullBoolFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
+		o.{{$colAlias}}, err = parseNullBoolFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		if err != nil {
 			return err
 		}
 	}
 	{{else if eq $column.Type "null.Int" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		o.{{titleCase $column.Name}}, err = parseNullIntFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
+		//o.{{titleCase $column.Name}}, err = parseNullIntFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
+		o.{{$colAlias}}, err = parseNullIntFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		if err != nil {
 			return err
 		}
 	}
 	{{else if eq $column.Type "null.Int64" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		o.{{titleCase $column.Name}}, err = parseNullInt64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
+		//o.{{titleCase $column.Name}}, err = parseNullInt64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
+		o.{{$colAlias}}, err = parseNullInt64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		if err != nil {
 			return err
 		}
 	}
 	{{else if eq $column.Type "null.Float64" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		o.{{titleCase $column.Name}}, err = parseNullFloat64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
+		//o.{{titleCase $column.Name}}, err = parseNullFloat64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
+		o.{{$colAlias}}, err = parseNullFloat64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		if err != nil {
 			return err
 		}
 	}
 	{{else if eq $column.Type "null.Time" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		o.{{titleCase $column.Name}}, err = parseNullTimeFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
+		//o.{{titleCase $column.Name}}, err = parseNullTimeFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
+		o.{{$colAlias}}, err = parseNullTimeFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		if err != nil {
 			return err
 		}
@@ -513,9 +537,13 @@ func Build{{$model.UpPlural}}With{{titleCase .Column}}s(ids []{{if .Nullable}}nu
 
 
 func Listar{{$model.UpPlural}}(exec boil.Executor, w http.ResponseWriter, r *http.Request) {
+	filtros, err := FiltrosAlListar{{$model.UpPlural}}(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
 
-	//{{$model.UpPlural}}(mods ...qm.QueryMod).All()
-	Objs, err := {{$model.UpPlural}}().All(exec)
+	Objs, err := {{$model.UpPlural}}(filtros...).All(exec)
 	if err == sql.ErrNoRows {
 		//w.WriteHeader(http.StatusNoContent)
 		//w.Write([]byte("[]"))

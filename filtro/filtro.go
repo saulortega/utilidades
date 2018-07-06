@@ -15,6 +15,10 @@ const (
 	Boolean
 )*/
 
+type Instancia struct {
+	Columnas []Columna
+}
+
 type Condición struct {
 	Declaración string
 	Parámetros  []interface{}
@@ -49,9 +53,34 @@ func (c *CondiciónBoolean) Condición() {
 //
 //
 
-func Condiciones(r *http.Request, gruposColumnas ...[]Columna) ([]Condición, error) {
-	var condiciones = []Condición{}
-	var columnas = []Columna{}
+func Nuevo(gruposColumnas ...[]Columna) *Instancia {
+	var I = new(Instancia)
+	I.Columnas = []Columna{}
+
+	for _, GC := range gruposColumnas {
+		for _, C := range GC {
+			I.Columnas = append(I.Columnas, C)
+		}
+	}
+
+	return I
+}
+
+func (I *Instancia) String(cols ...string) {
+	I.Columnas = append(I.Columnas, String(cols...)...)
+}
+
+func (I *Instancia) Int64(cols ...string) {
+	I.Columnas = append(I.Columnas, Int64(cols...)...)
+}
+
+func (I *Instancia) Bool(cols ...string) {
+	I.Columnas = append(I.Columnas, Bool(cols...)...)
+}
+
+func (I *Instancia) Condiciones(r *http.Request /*, gruposColumnas ...[]Columna*/) ([]*Condición, error) {
+	var condiciones = []*Condición{}
+	/*var columnas = []Columna{}
 
 	for _, GC := range gruposColumnas {
 		for _, C := range GC {
@@ -60,10 +89,10 @@ func Condiciones(r *http.Request, gruposColumnas ...[]Columna) ([]Condición, er
 	}
 
 	if len(columnas) == 0 {
-		return nil
-	}
+		return condiciones, nil
+	}*/
 
-	for _, col := range columnas {
+	for _, col := range I.Columnas {
 		switch col.tipo {
 		case columnaString:
 			//VlrsString(r, col.nombre) //[]string
@@ -96,7 +125,7 @@ func Condiciones(r *http.Request, gruposColumnas ...[]Columna) ([]Condición, er
 		}
 	}
 
-	return nil
+	return condiciones, nil
 }
 
 // clausula o condicion --- palabras a usar --
@@ -232,8 +261,8 @@ func CndcnBool(r *http.Request, col string) (string, error) {
 	return cndcn, nil
 }*/
 
-func CndcnString(r *http.Request, col string) Condición {
-	var C = Condición{}
+func CndcnString(r *http.Request, col string) *Condición {
+	var C = new(Condición)
 	C.Parámetros = []interface{}{}
 
 	var vlrs = VlrsString(r, col)
@@ -250,8 +279,8 @@ func CndcnString(r *http.Request, col string) Condición {
 	return C
 }
 
-func CndcnInt64(r *http.Request, col string) (Condición, error) {
-	var C = Condición{}
+func CndcnInt64(r *http.Request, col string) (*Condición, error) {
+	var C = new(Condición)
 	C.Parámetros = []interface{}{}
 
 	var vlrs, err = VlrsInt64(r, col)
@@ -270,7 +299,7 @@ func CndcnInt64(r *http.Request, col string) (Condición, error) {
 	return C, nil
 }
 
-func CndcnBool(r *http.Request, col string) (Condición, error) {
+func CndcnBool(r *http.Request, col string) (*Condición, error) {
 	var vlr, prsnte, err = VlrBool(r, col)
 	if err != nil {
 		return nil, err
@@ -283,7 +312,7 @@ func CndcnBool(r *http.Request, col string) (Condición, error) {
 		cndcn = fmt.Sprintf(`NOT %s`, col)
 	}
 
-	var C = Condición{}
+	var C = new(Condición)
 	C.Declaración = cndcn
 	C.Parámetros = []interface{}{}
 
