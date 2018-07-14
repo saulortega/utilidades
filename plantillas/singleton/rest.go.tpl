@@ -1,6 +1,9 @@
 import (
 	"errors"
+	"fmt"
 	"github.com/volatiletech/null"
+	"github.com/saulortega/filtro"
+	"github.com/volatiletech/sqlboiler/queries/qm"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -233,6 +236,70 @@ func errorCampoVacíoSiNoNulo(col string, noNulo bool) error {
 	}
 
 	return nil
+}
+
+//
+//
+//
+
+func paginación(r *http.Request, columnas []string) ([]qm.QueryMod, error) {
+	var qms = []qm.QueryMod{}
+
+	I := filtro.NewPagingAndSorting(columnas...)
+
+	pgncn, err := I.Parse(r)
+	if err != nil {
+		return qms, err
+	}
+
+	if pgncn != nil {
+		qms = append(qms, qm.Limit(pgncn.Limit))
+
+		if pgncn.Offset > 0 {
+			qms = append(qms, qm.Offset(pgncn.Offset))
+		}
+
+		if len(pgncn.Order) > 0 {
+			qms = append(qms, qm.OrderBy(pgncn.Order))
+		}
+	}
+
+	return qms, nil
+}
+
+func condiciones(r *http.Request, columnas ...filtro.Column) ([]qm.QueryMod, error) {
+	var qms = []qm.QueryMod{}
+
+	F := filtro.NewSearching(columnas)
+
+	condcns, err := F.Parse(r)
+	if err != nil {
+		return qms, err
+	}
+
+	var likesClauses = []string{}
+	var likesArgs = []interface{}{}
+	for _, c := range condcns {
+		switch c.SearchType() {
+		case filtro.SearchTypeIn:
+			qms = append(qms, qm.WhereIn(c.Clause, c.Args...))
+		case filtro.SearchTypeBoolean:
+			qms = append(qms, qm.Where(c.Clause))
+		case filtro.SearchTypeLike:
+			likesClauses = append(likesClauses, c.Clause)
+			likesArgs = append(likesArgs, c.Args...)
+		}
+	}
+
+	if len(likesArgs) > 0 {
+		qms = append(qms, qm.Where(fmt.Sprintf(`(%s)`, strings.Join(likesClauses, " OR ")), likesArgs...))
+	}
+
+	return qms, nil
+}
+
+func init() {
+	filtro.Params.Search = "buscar"
 }
 
 //

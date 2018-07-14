@@ -118,9 +118,9 @@ var Reconstruir{{$model.UpSingular}}AlObtener = func(exec boil.Executor, Obj *{{
 	return interface{}(Obj), nil
 }
 
-var FiltrosAlListar{{$model.UpPlural}} = func(boil.Executor, *http.Request) ([]qm.QueryMod, error) {
-	return nil, nil
-}
+//var FiltrosAlListar{{$model.UpPlural}} = func(boil.Executor, *http.Request) ([]qm.QueryMod, []qm.QueryMod, error) {
+//	return nil, nil, nil
+//}
 
 func Obtener{{$model.UpSingular}}(exec boil.Executor, w http.ResponseWriter, r *http.Request) {
 	var obj = new({{$model.UpSingular}})
@@ -537,11 +537,96 @@ func Build{{$model.UpPlural}}With{{titleCase .Column}}s(ids []{{if .Nullable}}nu
 
 
 func Listar{{$model.UpPlural}}(exec boil.Executor, w http.ResponseWriter, r *http.Request) {
-	filtros, err := FiltrosAlListar{{$model.UpPlural}}(exec, r)
+	/*filtros, filtrosPaginación, err := FiltrosAlListar{{$model.UpPlural}}(exec, r)
 	if err != nil {
 		responder.BadRequest(w, err)
 		return
+	} else if (filtros == nil || len(filtros) == 0) && (filtrosPaginación == nil || len(filtrosPaginación) == 0) {
+		responder.BadRequest(w, errors.New("No se recibieron datos de paginación o filtrado."))
+		return
+		// ----------- revisar si esto realmente debe ir -------- probar descomenaandolo cuando todo esté apsado acá ..
+	}*/
+
+	filtrosPaginación, err := paginación(r, {{$model.DownSingular}}Columns)
+	if err != nil {
+		responder.InternalServerError(w)
+		log.Println(err)
+		return
 	}
+
+
+
+	var Cols = []filtro.Column{}
+
+	{{range $column := .Table.Columns }}
+	{{- $colAlias := $model.Column $column.Name -}}
+	{{- if eq (titleCase $column.Name) "FechaCreación" "FechaModificación" "FechaEliminación" "Contraseña"}}
+	{{- else -}}
+	{{- if eq $column.Type "string" -}}
+	col_{{$column.Name}} := filtro.InString("{{$column.Name}}")
+	Cols = append(Cols, col_{{$column.Name}}...)
+	col_{{$column.Name}}_like := filtro.Like("{{$column.Name}}")
+	Cols = append(Cols, col_{{$column.Name}}_like...)
+	{{else if eq $column.Type "bool" -}}
+	col_{{$column.Name}} := filtro.Boolean("{{$column.Name}}")
+	Cols = append(Cols, col_{{$column.Name}}...)
+	{{else if eq $column.Type "int" -}}
+	col_{{$column.Name}} := filtro.InInt64("{{$column.Name}}") // int
+	Cols = append(Cols, col_{{$column.Name}}...)
+	{{else if eq $column.Type "int64" -}}
+	col_{{$column.Name}} := filtro.InInt64("{{$column.Name}}")
+	Cols = append(Cols, col_{{$column.Name}}...)
+	{{else if eq $column.Type "float64" -}}
+	// float64 pendiente
+	{{else if eq $column.Type "time.Time" -}}
+	// time pendiente
+	{{else if eq $column.Type "null.String" -}}
+	col_{{$column.Name}} := filtro.InString("{{$column.Name}}")
+	Cols = append(Cols, col_{{$column.Name}}...)
+	col_{{$column.Name}}_like := filtro.Like("{{$column.Name}}")
+	Cols = append(Cols, col_{{$column.Name}}_like...)
+	{{else if eq $column.Type "null.Bool" -}}
+	col_{{$column.Name}} := filtro.Boolean("{{$column.Name}}")
+	Cols = append(Cols, col_{{$column.Name}}...)
+	{{else if eq $column.Type "null.Int" -}}
+	col_{{$column.Name}} := filtro.InInt64("{{$column.Name}}") // int
+	Cols = append(Cols, col_{{$column.Name}}...)
+	{{else if eq $column.Type "null.Int64" -}}
+	col_{{$column.Name}} := filtro.InInt64("{{$column.Name}}")
+	Cols = append(Cols, col_{{$column.Name}}...)
+	{{else if eq $column.Type "null.Float64" -}}
+	// float64 pendiente
+	{{else if eq $column.Type "null.Time" -}}
+	// time pendiente
+	{{end -}}
+	{{end -}}
+	{{end}}
+
+
+
+
+	filtros, err := condiciones(r, Cols...)
+	if err != nil {
+		responder.InternalServerError(w)
+		log.Println(err)
+		return
+	}
+
+
+
+	Total, err := {{$model.UpPlural}}(filtros...).Count(exec)
+	if err != nil {
+		responder.InternalServerError(w)
+		log.Println(err)
+		return
+	}
+
+
+
+	filtros = append(filtros, filtrosPaginación...)
+
+
+
 
 	Objs, err := {{$model.UpPlural}}(filtros...).All(exec)
 	if err == sql.ErrNoRows {
@@ -556,18 +641,8 @@ func Listar{{$model.UpPlural}}(exec boil.Executor, w http.ResponseWriter, r *htt
 		return
 	}
 
-	/*ObjsJSON, err := MarshalAndResponseOnError(w, Objs)
-	if err != nil {
-		//ResponseInternalServerError(w, err, "5292")
-		responder.InternalServerError(w)
-		log.Println(err)
-		return
-	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write(ObjsJSON)*/
-
-	responder.Listado(w, Objs)
+	responder.Listado(w, Objs, Total)
 }
 
 

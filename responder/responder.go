@@ -6,6 +6,7 @@ import (
 	"github.com/saulortega/utilidades/notificación"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 /*
@@ -71,7 +72,7 @@ func Eliminación(w http.ResponseWriter, llave string) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func Listado(w http.ResponseWriter, Objs interface{}) {
+func Listado(w http.ResponseWriter, Objs interface{}, total int64) {
 	ObjsJSON, err := json.Marshal(Objs)
 	if err != nil {
 		log.Println("Error codificando a JSON")
@@ -80,6 +81,7 @@ func Listado(w http.ResponseWriter, Objs interface{}) {
 		return
 	}
 
+	w.Header().Set("X-Total", strconv.FormatInt(total, 10))
 	w.WriteHeader(http.StatusOK)
 	w.Write(ObjsJSON)
 }
