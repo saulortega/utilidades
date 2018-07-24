@@ -1,11 +1,13 @@
 package texto
 
 import (
-	"fmt"
-	"net/http"
+	//"fmt"
+	//"net/http"
 	"regexp"
 	"strings"
 )
+
+/*
 
 // Normalizar texto para comparación de búsqueda.
 func NormalizarParaComparación(t string) string {
@@ -31,6 +33,8 @@ func NormalizarColumnaParaComparación(col string) string {
 	return fmt.Sprintf("LOWER(TRANSLATE(%s, 'ÁÉÍÓÚÜáéíóúüÀÈÌÒÙàèìòùÑ', 'aeiouuaeiouuaeiouaeiouñ'))", col)
 }
 
+*/
+
 // Útil para requerimientos de servicios de salud, por ejemplo.
 func RemoverTildesDiéresisEñes(T string) string {
 	T = strings.Replace(T, "Ñ", "NN", -1)
@@ -53,6 +57,8 @@ func RemoverTildesDiéresisEñes(T string) string {
 //
 //
 //
+
+/*
 
 func PalabrasNormalizadasFiltradas(t string) []string {
 	t = NormalizarParaComparación(t)
@@ -114,6 +120,8 @@ func SQLBúsqueda(columnas []string, palabras []string, orAnd string) string {
 
 	return fmt.Sprintf(`(%s)`, strings.Join(ors, " OR "))
 }
+
+*/
 
 // ------------ por aquí voy ---------------- crear paquete nuevo "filtros". recibir tipo Filtro según los tipos de datos sql, etc ..
 

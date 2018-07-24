@@ -5,6 +5,7 @@ import (
 	"github.com/saulortega/filtro"
 	"github.com/volatiletech/sqlboiler/queries/qm"
 	"net/http"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -13,7 +14,7 @@ import (
 
 
 func parseBoolFromForm(r *http.Request, field string, errorOnBlank bool) (bool, error) {
-	var vo = strings.TrimSpace(r.FormValue(field))
+	var vo = requestValStr(r, field)
 	var err error
 	var vc bool
 
@@ -30,7 +31,7 @@ func parseBoolFromForm(r *http.Request, field string, errorOnBlank bool) (bool, 
 }
 
 func parseIntFromForm(r *http.Request, field string, errorOnBlank bool) (int, error) {
-	var vo = strings.TrimSpace(r.FormValue(field))
+	var vo = requestValStr(r, field)
 	var err error
 	var vc int
 
@@ -47,7 +48,7 @@ func parseIntFromForm(r *http.Request, field string, errorOnBlank bool) (int, er
 }
 
 func parseInt64FromForm(r *http.Request, field string, errorOnBlank bool) (int64, error) {
-	var vo = strings.TrimSpace(r.FormValue(field))
+	var vo = requestValStr(r, field)
 	var err error
 	var vc int64
 
@@ -64,7 +65,7 @@ func parseInt64FromForm(r *http.Request, field string, errorOnBlank bool) (int64
 }
 
 func parseFloat64FromForm(r *http.Request, field string, errorOnBlank bool) (float64, error) {
-	var vo = strings.TrimSpace(r.FormValue(field))
+	var vo = requestValStr(r, field)
 	var err error
 	var vc float64
 
@@ -81,7 +82,7 @@ func parseFloat64FromForm(r *http.Request, field string, errorOnBlank bool) (flo
 }
 
 func parseTimeFromForm(r *http.Request, field string, errorOnBlank bool) (time.Time, error) {
-	var vo = strings.TrimSpace(r.FormValue(field))
+	var vo = requestValStr(r, field)
 	var err error
 	var vc time.Time
 
@@ -160,6 +161,80 @@ func LlaveDesdeURL(r *http.Request) (string, error) {
 
 	return s, nil
 }
+
+func requestValoresString(r *http.Request, ll string) []string {
+	var vals = []string{}
+
+	for _, v := range r.PostForm[ll] {
+		val := strings.TrimSpace(v)
+		if val == "" {
+			continue
+		}
+
+		vals = append(vals, val)
+	}
+
+	return vals
+}
+
+func requestValStr(r *http.Request, field string) string {
+	var vo = strings.TrimSpace(r.FormValue(field))
+	if vo == "null" {
+		vo = ""
+	}
+
+	return vo
+}
+
+/*
+func requestValoresInt64(r *http.Request, ll string) ([]int64, error) {
+	var valsString = requestValoresString(r, ll)
+	var vals = []int64{}
+
+	for _, v := range valsString {
+		val, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || val == 0 {
+			return vals, errors.New("Número erróneo. [4568]")
+		}
+
+		vals = append(vals, val)
+	}
+
+	return vals, nil
+}
+
+func requestValoresInt(r *http.Request, ll string) ([]int, error) {
+	var valsString = requestValoresString(r, ll)
+	var vals = []int{}
+
+	for _, v := range valsString {
+		val, err := strconv.Atoi(v)
+		if err != nil || val == 0 {
+			return vals, errors.New("Número erróneo. [2974]")
+		}
+
+		vals = append(vals, val)
+	}
+
+	return vals, nil
+}
+
+func requestValoresFloat64(r *http.Request, ll string) ([]float64, error) {
+	var valsString = requestValoresString(r, ll)
+	var vals = []float64{}
+
+	for _, v := range valsString {
+		val, err := strconv.ParseFloat(v, 64)
+		if err != nil || val == 0 {
+			return vals, errors.New("Número erróneo. [2974]")
+		}
+
+		vals = append(vals, val)
+	}
+
+	return vals, nil
+}
+*/
 
 /*func StringKeyFromURL(r *http.Request) (string, error) {
 	p := strings.Split(r.URL.Path, "/")
@@ -242,7 +317,7 @@ func errorCampoVacíoSiNoNulo(col string, noNulo bool) error {
 //
 //
 
-func paginación(r *http.Request, columnas []string) ([]qm.QueryMod, error) {
+func paginación(r *http.Request, columnas []string, hayFechaCreación bool) ([]qm.QueryMod, error) {
 	var qms = []qm.QueryMod{}
 
 	I := filtro.NewPagingAndSorting(columnas...)
@@ -261,6 +336,8 @@ func paginación(r *http.Request, columnas []string) ([]qm.QueryMod, error) {
 
 		if len(pgncn.Order) > 0 {
 			qms = append(qms, qm.OrderBy(pgncn.Order))
+		} else if hayFechaCreación {
+			qms = append(qms, qm.OrderBy("fecha_creación DESC"))
 		}
 	}
 
@@ -300,6 +377,57 @@ func condiciones(r *http.Request, columnas ...filtro.Column) ([]qm.QueryMod, err
 
 func init() {
 	filtro.Params.Search = "buscar"
+}
+
+//
+//
+//
+
+// Establecer un campo a una estructura. Sólo string, int, int64, float64.
+func establecerValorCampo(value reflect.Value, campo string, valor string) error {
+	campo = columnaCampo(campo)
+	var elem = value.Elem()
+
+	var field = elem.FieldByName(campo)
+	if !field.IsValid() || !field.CanSet() {
+		return errors.New("Ocurrió un error. Intente de nuevo más tarde. [6392]")
+	}
+
+	switch field.Kind() {
+	case reflect.String:
+		field.SetString(valor)
+	case reflect.Int64:
+		vInt64, err := strconv.ParseInt(valor, 10, 64)
+		if err != nil || vInt64 == 0 {
+			return errors.New("Valor erróneo. [8352]")
+		}
+		field.SetInt(vInt64)
+	case reflect.Int:
+		vInt, err := strconv.Atoi(valor)
+		if err != nil || vInt == 0 {
+			return errors.New("Valor erróneo. [3963]")
+		}
+		field.SetInt(int64(vInt))
+	case reflect.Float64:
+		vFloat64, err := strconv.ParseFloat(valor, 64)
+		if err != nil || vFloat64 == 0 {
+			return errors.New("Valor erróneo. [8522]")
+		}
+		field.SetFloat(vFloat64)
+	default:
+		return errors.New("Ocurrió un error. Intente de nuevo más tarde. [2641]")
+	}
+
+	return nil
+}
+
+func columnaCampo(c string) string {
+	var pdzs = []string{}
+	for _, pdz := range strings.Split(strings.TrimSpace(c), "_") {
+		pdzs = append(pdzs, strings.Title(pdz))
+	}
+
+	return strings.Join(pdzs, "")
 }
 
 //

@@ -118,10 +118,6 @@ var Reconstruir{{$model.UpSingular}}AlObtener = func(exec boil.Executor, Obj *{{
 	return interface{}(Obj), nil
 }
 
-//var FiltrosAlListar{{$model.UpPlural}} = func(boil.Executor, *http.Request) ([]qm.QueryMod, []qm.QueryMod, error) {
-//	return nil, nil, nil
-//}
-
 func Obtener{{$model.UpSingular}}(exec boil.Executor, w http.ResponseWriter, r *http.Request) {
 	var obj = new({{$model.UpSingular}})
 	var Obj interface{}
@@ -130,27 +126,22 @@ func Obtener{{$model.UpSingular}}(exec boil.Executor, w http.ResponseWriter, r *
 
 	llave, err = LlaveDesdeURL(r)
 	if err != nil || llave == "" {
-		//ResponseNoID(w)
 		responder.LlaveNoRecibida(w)
 		return
 	}
 
 	obj, err = Find{{$model.UpSingular}}(exec, llave)
 	if err != nil {
-		//ResponseFindError(w, llave, err)
 		responder.NotFoundOrInternal(w, err, llave)
 		return
 	}
 
 	Obj, err = Reconstruir{{$model.UpSingular}}AlObtener(exec, obj)
 	if err != nil {
-		//ResponseFindError(w, llave, err)
 		responder.BadRequest(w, err)
 		return
 	}
-	//Obj = obj
 
-	//ResponseFindSuccess(w, llave, Obj)
 	responder.Obtención(w, Obj, llave)
 }
 
@@ -158,39 +149,107 @@ func Crear{{$model.UpSingular}}(exec boil.Executor, w http.ResponseWriter, r *ht
 	var Obj = new({{$model.UpSingular}})
 	var TX = new(sql.Tx)
 	var err error
-	var llave string
 
-	llave, err = llaves.L6B(exec.(*sql.DB), "{{.Table.Name}}")
+	err = Obj.Construir(r)
 	if err != nil {
-		//ResponseInternalServerError(w, err, "3844")
+		responder.BadRequest(w, err)
+		return
+	}
+
+	TX, err = exec.(*sql.DB).Begin()
+	if err != nil {
 		responder.InternalServerError(w)
 		log.Println(err)
+		return
+	}
+
+	err = Obj.Crear(exec, TX, w, r)
+	if err != nil {
+		TX.Rollback()
+		return
+	}
+
+	err = TX.Commit()
+	if err != nil {
+		responder.InternalServerError(w)
+		log.Println(err)
+		return
+	}
+
+	responder.Creación(w, Obj.Llave)
+}
+
+// Como el anterior, pero varios registros idénticos con uno variable.
+func Crear{{$model.UpPlural}}PorCampo(exec boil.Executor, w http.ResponseWriter, r *http.Request, campo string) {
+	var Obj = new({{$model.UpSingular}})
+	var TX = new(sql.Tx)
+	var err error
+
+	var vals = requestValoresString(r, campo)
+	if len(vals) == 0 {
+		responder.BadRequest(w, errors.New("El campo «" + strings.Replace(campo, "_", " ", -1) + "» es obligatorio."))
 		return
 	}
 
 	err = Obj.Construir(r)
 	if err != nil {
-		//ResponseBadRequest(w, err)
 		responder.BadRequest(w, err)
 		return
 	}
 
-	Obj.Llave = llave
-
 	TX, err = exec.(*sql.DB).Begin()
 	if err != nil {
-		//ResponseInternalServerError(w, err, "6120")
 		responder.InternalServerError(w)
 		log.Println(err)
 		return
 	}
 
+	for _, valor := range vals {
+		obj := new({{$model.UpSingular}})
+		*obj = *Obj //Copia
+
+		err = establecerValorCampo(reflect.ValueOf(obj), campo, valor)
+		if err != nil {
+			responder.BadRequest(w, err)
+			TX.Rollback()
+			return
+		}
+
+		err = obj.Crear(exec, TX, w, r)
+		if err != nil {
+			// Respondido en obj.Crear
+			TX.Rollback()
+			return
+		}
+	}
+
+	err = TX.Commit()
+	if err != nil {
+		responder.InternalServerError(w)
+		log.Println(err)
+		return
+	}
+
+	responder.Creación(w, "000000") // Pendiente lo de múltiples llaves
+}
+
+func (Obj *{{$model.UpSingular}}) Crear(exec boil.Executor, TX boil.Transactor, w http.ResponseWriter, r *http.Request) error {
+	var llave string
+	var err error
+
+	llave, err = llaves.L6B(exec.(*sql.DB), "{{.Table.Name}}")
+	if err != nil {
+		responder.InternalServerError(w)
+		log.Println(err)
+		return err
+	}
+
+	Obj.Llave = llave
+
 	err = AntesDeCrear{{$model.UpSingular}}(TX, Obj, r)
 	if err != nil {
-		//ResponseBadRequest(w, err)
 		responder.BadRequest(w, err)
-		TX.Rollback()
-		return
+		return err
 	}
 
 	{{if $tieneFechaCreación -}}
@@ -202,32 +261,18 @@ func Crear{{$model.UpSingular}}(exec boil.Executor, w http.ResponseWriter, r *ht
 
 	err = Obj.Insert(TX, boil.Infer()) // ---------------------------- pendiente ver si agregar lista blanca en vez del Infer -----------------------------
 	if err != nil {
-		//ResponseInternalServerError(w, err, "3984")
 		responder.InternalServerError(w)
 		log.Println(err)
-		TX.Rollback()
-		return
+		return err
 	}
 
 	err = DespuésDeCrear{{$model.UpSingular}}(TX, Obj, r)
 	if err != nil {
-		//ResponseInternalServerError(w, err, "9172")
 		responder.BadRequest(w, err)
-		TX.Rollback()
-		return
+		return err
 	}
 
-	err = TX.Commit()
-	if err != nil {
-		//ResponseInternalServerError(w, err, "2074")
-		responder.InternalServerError(w)
-		log.Println(err)
-		return
-	}
-
-	//w.Header().Set("X-Llave", Obj.Llave)
-	//w.WriteHeader(http.StatusCreated)
-	responder.Creación(w, Obj.Llave)
+	return nil
 }
 
 func Editar{{$model.UpSingular}}(exec boil.Executor, w http.ResponseWriter, r *http.Request) {
@@ -239,28 +284,24 @@ func Editar{{$model.UpSingular}}(exec boil.Executor, w http.ResponseWriter, r *h
 
 	llave, err = LlaveDesdeURL(r)
 	if err != nil || llave == "" {
-		//ResponseNoID(w)
 		responder.LlaveNoRecibida(w)
 		return
 	}
 
 	Obj, err = Find{{$model.UpSingular}}(exec, llave)
 	if err != nil {
-		//ResponseFindError(w, llave, err)
 		responder.NotFoundOrInternal(w, err, llave)
 		return
 	}
 
 	err = Obj.Construir(r)
 	if err != nil {
-		//ResponseBadRequest(w, err)
 		responder.BadRequest(w, err)
 		return
 	}
 
 	TX, err = exec.(*sql.DB).Begin()
 	if err != nil {
-		//ResponseInternalServerError(w, err, "2926")
 		responder.InternalServerError(w)
 		log.Println(err)
 		return
@@ -268,7 +309,6 @@ func Editar{{$model.UpSingular}}(exec boil.Executor, w http.ResponseWriter, r *h
 
 	err = AntesDeEditar{{$model.UpSingular}}(TX, Obj, r)
 	if err != nil {
-		//ResponseBadRequest(w, err)
 		responder.BadRequest(w, err)
 		TX.Rollback()
 		return
@@ -280,7 +320,6 @@ func Editar{{$model.UpSingular}}(exec boil.Executor, w http.ResponseWriter, r *h
 
 	_, err = Obj.Update(TX, boil.Infer()) // ---------------------------- pendiente ver si agregar lista blanca en vez del Infer -----------------------------
 	if err != nil {
-		//ResponseInternalServerError(w, err, "8252")
 		responder.InternalServerError(w)
 		log.Println(err)
 		TX.Rollback()
@@ -289,7 +328,6 @@ func Editar{{$model.UpSingular}}(exec boil.Executor, w http.ResponseWriter, r *h
 
 	err = DespuésDeEditar{{$model.UpSingular}}(TX, Obj, r)
 	if err != nil {
-		//ResponseInternalServerError(w, err, "3076")
 		responder.BadRequest(w, err)
 		TX.Rollback()
 		return
@@ -297,14 +335,11 @@ func Editar{{$model.UpSingular}}(exec boil.Executor, w http.ResponseWriter, r *h
 
 	err = TX.Commit()
 	if err != nil {
-		//ResponseInternalServerError(w, err, "0363")
 		responder.InternalServerError(w)
 		log.Println(err)
 		return
 	}
 
-	//w.Header().Set("X-Llave", Obj.Llave)
-	//w.WriteHeader(http.StatusOK)
 	responder.Edición(w, Obj.Llave)
 }
 
@@ -325,14 +360,12 @@ func Eliminar{{$model.UpSingular}}PorBD(exec boil.Executor, w http.ResponseWrite
 
 	llave, err = LlaveDesdeURL(r)
 	if err != nil || llave == "" {
-		//ResponseNoID(w)
 		responder.LlaveNoRecibida(w)
 		return
 	}
 
 	Obj, err = Find{{$model.UpSingular}}(exec, llave)
 	if err != nil {
-		//ResponseFindError(w, llave, err)
 		responder.NotFoundOrInternal(w, err, llave)
 		return
 	}
@@ -340,14 +373,11 @@ func Eliminar{{$model.UpSingular}}PorBD(exec boil.Executor, w http.ResponseWrite
 	Obj.FechaEliminación = null.NewTime(time.Now(), true)
 	_, err = Obj.Update(exec, boil.Whitelist("deleted_at"))
 	if err != nil {
-		//ResponseInternalServerError(w, err, "4872")
 		responder.InternalServerError(w)
 		log.Println(err)
 		return
 	}
 
-	//w.Header().Set("X-Llave", Obj.Llave)
-	//w.WriteHeader(http.StatusOK)
 	responder.Eliminación(w, Obj.Llave)
 }
 {{- end}}
@@ -359,28 +389,23 @@ func Eliminar{{$model.UpSingular}}Real(exec boil.Executor, w http.ResponseWriter
 
 	llave, err = LlaveDesdeURL(r)
 	if err != nil || llave == "" {
-		//ResponseNoID(w)
 		responder.LlaveNoRecibida(w)
 		return
 	}
 
 	Obj, err = Find{{$model.UpSingular}}(exec, llave)
 	if err != nil {
-		//ResponseFindError(w, llave, err)
 		responder.NotFoundOrInternal(w, err, llave)
 		return
 	}
 
 	_, err = Obj.Delete(exec)
 	if err != nil {
-		//ResponseInternalServerError(w, err, "6921")
 		responder.InternalServerError(w)
 		log.Println(err)
 		return
 	}
 
-	//w.Header().Set("X-Llave", Obj.Llave)
-	//w.WriteHeader(http.StatusOK)
 	responder.Eliminación(w, Obj.Llave)
 }
 
@@ -400,12 +425,10 @@ func (o *{{$model.UpSingular}}) Construir(r *http.Request) error {
 	{{- else -}}
 	{{- if eq $column.Type "string" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		//o.{{titleCase $column.Name}} = r.FormValue("{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		o.{{$colAlias}} = r.FormValue("{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 	}
 	{{else if eq $column.Type "bool" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		//o.{{titleCase $column.Name}}, err = parseBoolFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		o.{{$colAlias}}, err = parseBoolFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		if err != nil {
 			return err
@@ -413,7 +436,6 @@ func (o *{{$model.UpSingular}}) Construir(r *http.Request) error {
 	}
 	{{else if eq $column.Type "int" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		//o.{{titleCase $column.Name}}, err = parseIntFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		o.{{$colAlias}}, err = parseIntFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		if err != nil {
 			return err
@@ -421,7 +443,6 @@ func (o *{{$model.UpSingular}}) Construir(r *http.Request) error {
 	}
 	{{else if eq $column.Type "int64" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		//o.{{titleCase $column.Name}}, err = parseInt64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		o.{{$colAlias}}, err = parseInt64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		if err != nil {
 			return err
@@ -429,7 +450,6 @@ func (o *{{$model.UpSingular}}) Construir(r *http.Request) error {
 	}
 	{{else if eq $column.Type "float64" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		//o.{{titleCase $column.Name}}, err = parseFloat64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		o.{{$colAlias}}, err = parseFloat64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		if err != nil {
 			return err
@@ -437,7 +457,6 @@ func (o *{{$model.UpSingular}}) Construir(r *http.Request) error {
 	}
 	{{else if eq $column.Type "time.Time" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		//o.{{titleCase $column.Name}}, err = parseTimeFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		o.{{$colAlias}}, err = parseTimeFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}", !in("{{$column.Name}}", {{$model.DownSingular}}ColumnsWithDefault))
 		if err != nil {
 			return err
@@ -445,12 +464,10 @@ func (o *{{$model.UpSingular}}) Construir(r *http.Request) error {
 	}
 	{{else if eq $column.Type "null.String" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		//o.{{titleCase $column.Name}} = parseNullStringFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		o.{{$colAlias}} = parseNullStringFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 	}
 	{{else if eq $column.Type "null.Bool" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		//o.{{titleCase $column.Name}}, err = parseNullBoolFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		o.{{$colAlias}}, err = parseNullBoolFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		if err != nil {
 			return err
@@ -458,7 +475,6 @@ func (o *{{$model.UpSingular}}) Construir(r *http.Request) error {
 	}
 	{{else if eq $column.Type "null.Int" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		//o.{{titleCase $column.Name}}, err = parseNullIntFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		o.{{$colAlias}}, err = parseNullIntFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		if err != nil {
 			return err
@@ -466,7 +482,6 @@ func (o *{{$model.UpSingular}}) Construir(r *http.Request) error {
 	}
 	{{else if eq $column.Type "null.Int64" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		//o.{{titleCase $column.Name}}, err = parseNullInt64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		o.{{$colAlias}}, err = parseNullInt64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		if err != nil {
 			return err
@@ -474,7 +489,6 @@ func (o *{{$model.UpSingular}}) Construir(r *http.Request) error {
 	}
 	{{else if eq $column.Type "null.Float64" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		//o.{{titleCase $column.Name}}, err = parseNullFloat64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		o.{{$colAlias}}, err = parseNullFloat64FromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		if err != nil {
 			return err
@@ -482,7 +496,6 @@ func (o *{{$model.UpSingular}}) Construir(r *http.Request) error {
 	}
 	{{else if eq $column.Type "null.Time" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
-		//o.{{titleCase $column.Name}}, err = parseNullTimeFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		o.{{$colAlias}}, err = parseNullTimeFromForm(r, "{{if eq $.StructTagCasing "camel"}}{{$column.Name | camelCase}}{{else}}{{$column.Name}}{{end}}")
 		if err != nil {
 			return err
@@ -537,24 +550,12 @@ func Build{{$model.UpPlural}}With{{titleCase .Column}}s(ids []{{if .Nullable}}nu
 
 
 func Listar{{$model.UpPlural}}(exec boil.Executor, w http.ResponseWriter, r *http.Request) {
-	/*filtros, filtrosPaginación, err := FiltrosAlListar{{$model.UpPlural}}(exec, r)
-	if err != nil {
-		responder.BadRequest(w, err)
-		return
-	} else if (filtros == nil || len(filtros) == 0) && (filtrosPaginación == nil || len(filtrosPaginación) == 0) {
-		responder.BadRequest(w, errors.New("No se recibieron datos de paginación o filtrado."))
-		return
-		// ----------- revisar si esto realmente debe ir -------- probar descomenaandolo cuando todo esté apsado acá ..
-	}*/
-
-	filtrosPaginación, err := paginación(r, {{$model.DownSingular}}Columns)
+	filtrosPaginación, err := paginación(r, {{$model.DownSingular}}Columns, {{$tieneFechaCreación}})
 	if err != nil {
 		responder.InternalServerError(w)
 		log.Println(err)
 		return
 	}
-
-
 
 	var Cols = []filtro.Column{}
 
@@ -602,17 +603,12 @@ func Listar{{$model.UpPlural}}(exec boil.Executor, w http.ResponseWriter, r *htt
 	{{end -}}
 	{{end}}
 
-
-
-
 	filtros, err := condiciones(r, Cols...)
 	if err != nil {
 		responder.InternalServerError(w)
 		log.Println(err)
 		return
 	}
-
-
 
 	Total, err := {{$model.UpPlural}}(filtros...).Count(exec)
 	if err != nil {
@@ -621,21 +617,13 @@ func Listar{{$model.UpPlural}}(exec boil.Executor, w http.ResponseWriter, r *htt
 		return
 	}
 
-
-
 	filtros = append(filtros, filtrosPaginación...)
-
-
-
 
 	Objs, err := {{$model.UpPlural}}(filtros...).All(exec)
 	if err == sql.ErrNoRows {
-		//w.WriteHeader(http.StatusNoContent)
-		//w.Write([]byte("[]"))
 		responder.ListadoVacío(w)
 		return
 	} else if err != nil {
-		//ResponseInternalServerError(w, err, "3583")
 		responder.InternalServerError(w)
 		log.Println(err)
 		return
