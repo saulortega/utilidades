@@ -90,6 +90,11 @@ func BadRequest(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusBadRequest)
 }
 
+func MethodNotAllowed(w http.ResponseWriter) {
+	w.Header().Set("X-Notificaciones", notificación.Error("Método no permitido.").Base64())
+	w.WriteHeader(http.StatusMethodNotAllowed) //405
+}
+
 func LlaveNoRecibida(w http.ResponseWriter) {
 	w.Header().Set("X-Notificaciones", notificación.Error("Identificador no recibido. Recargue la página e intente de nuevo.").Base64())
 	w.WriteHeader(http.StatusBadRequest) //400
