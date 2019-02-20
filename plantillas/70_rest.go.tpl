@@ -422,7 +422,7 @@ func (o *{{$model.UpSingular}}) Construir(r *http.Request) error {
 
 	{{range $column := .Table.Columns }}
 	{{- $colAlias := $model.Column $column.Name -}}
-	{{- if eq (titleCase $column.Name) "Llave" "FechaCreación" "FechaModificación" "FechaEliminación" "Contraseña"}}
+	{{- if eq (titleCase $column.Name) "Llave" "FechaCreación" "FechaModificación" "FechaEliminación" "AutorCreación" "AutorModificación" "AutorEliminación" "Contraseña"}}
 	{{- else -}}
 	{{- if eq $column.Type "string" -}}
 	if !in("{{$column.Name}}", OmitirAlConstruir{{$model.UpSingular}}){
@@ -509,6 +509,7 @@ func (o *{{$model.UpSingular}}) Construir(r *http.Request) error {
 	return err
 }
 
+
 /*
 {{range .Table.FKeys -}}
 
@@ -562,7 +563,7 @@ func Listar{{$model.UpPlural}}(exec boil.ContextExecutor, w http.ResponseWriter,
 
 	{{range $column := .Table.Columns }}
 	{{- $colAlias := $model.Column $column.Name -}}
-	{{- if eq (titleCase $column.Name) "FechaCreación" "FechaModificación" "FechaEliminación" "Contraseña"}}
+	{{- if eq (titleCase $column.Name) "Llave" "FechaCreación" "FechaModificación" "FechaEliminación" "AutorCreación" "AutorModificación" "AutorEliminación" "Contraseña"}}
 	{{- else -}}
 	{{- if eq $column.Type "string" -}}
 	col_{{$column.Name}} := filtro.InString("{{$column.Name}}")
