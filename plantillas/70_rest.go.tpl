@@ -637,61 +637,68 @@ func Listar{{$model.UpPlural}}(exec boil.ContextExecutor, w http.ResponseWriter,
 
 
 
-/*
 
 
+{{- if .Table.IsJoinTable -}}
+{{- else -}}
+	{{- $table := .Table -}}
+	{{- range $rel := .Table.ToManyRelationships -}}
+		{{- $ltable := $.Aliases.Table $rel.Table -}}
+		{{- $ftable := $.Aliases.Table $rel.ForeignTable -}}
+		{{- $relAlias := $.Aliases.ManyRelationship $rel.ForeignTable $rel.Name $rel.JoinTable $rel.JoinLocalFKeyName -}}
+		{{- $col := $ltable.Column $rel.Column -}}
+		{{- $fcol := $ftable.Column $rel.ForeignColumn -}}
+		{{- $usesPrimitives := usesPrimitives $.Tables $rel.Table $rel.Column $rel.ForeignTable $rel.ForeignColumn -}}
+		{{- $schemaForeignTable := $rel.ForeignTable | $.SchemaTable }}
+		{{- $foreignPKeyCols := (getTable $.Tables $rel.ForeignTable).PKey.Columns }}
+		{{- $tieneFeCre := eq (index $ftable.Columns "fecha_creación") "FechaCreación" -}}
+		{{- $tieneFeMod := eq (index $ftable.Columns "fecha_modificación") "FechaModificación" -}}
 
 
-//
-//
-// Empieza plantilla genérica vacía...
-//
-//
+// ===================================== $ltable : {{ $ltable }} ,,,, $ftable : {{ $ftable }} ,,,, $relAlias : {{ $relAlias }}
+// 0000000000000 $fcol : $col : {{ $col }} ,,,, $fcol : {{ $fcol }} ,,,, $foreignPKeyCols : {{ $foreignPKeyCols }}
+// yyyyyyyyyyyyy $rel.Table : {{$rel.Table}}
+// zzzzzzzzzzzzz $rel : {{$rel}}
+// zzzzzzzzzzz22 $rel.ForeignTable : {{$rel.ForeignTable}}
+// zzzzzzzzzzz33 $ftable.Columns : {{$ftable.Columns}}
 
+func (o *{{$model.UpSingular}}) Agregar{{$ftable.UpPlural}}(TX boil.ContextTransactor, hijos ...*{{$ftable.UpSingular}}) error {
+	var ahora = time.Now()
 
-<template>
+	for i, _ := range hijos {
+		hijos[i].{{$fcol}} = o.Llave
 
-	<div>
-		<div class="row">
-			<div class="col-xs-12 col-xs-12">
-				<div class="form-group">
-					<label> ooooooooooooooooooooo: </label>
-					<select class="form-control" v-model="Data.ooooooooooooooooooooo">
-						<option></option>
-						<option v-for="{{`e in $root.Recursos.ooooooooooooooooooooo`}}" v-if="{{`e.enabled`}}" :value="{{`e.id`}}">{{`{{e.description}}`}}</option>
-					</select>
-				</div>
-			</div>
-			<div class="col-xs-12 col-xs-12">
-				<div class="form-group">
-					<label> ooooooooooooooooooooo </label>
-					<input type="text" class="form-control" v-model="Data.ooooooooooooooooooooo" maxlength="100" placeholder="ooooooooooooooooooooo" required>
-				</div>
-			</div>
-		</div>
-	</div>
+		var llave string
+		var err error
 
-</template>
+		llave, err = llaves.NuevaParaBD(BD, "{{$rel.ForeignTable}}", LongitudLlave)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 
+		hijos[i].Llave = llave
 
-<script>
-	var opcns = {
-		data: function () {
-			return {}
-		},
-		mixins: [Mixin{{$model.UpSingular}}],
-		mounted: function(){
-			//
-		},
-		methods: {
-			//
-		},
+		{{if $tieneFeCre -}}
+		hijos[i].FechaCreación = ahora
+		{{- end}}
+		{{if $tieneFeMod -}}
+		hijos[i].FechaModificación = ahora
+		{{- end}}
+
+		err = hijos[i].Insert(context.Background(), TX, boil.Infer())
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 	}
 
-</script>
+	return nil
+}
 
+	{{- end -}}{{- /* range relationships */ -}}
+{{- end -}}{{- /* if IsJoinTable */ -}}
 
-
-
-*/
+//
+//
 
