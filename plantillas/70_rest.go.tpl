@@ -662,11 +662,41 @@ func Listar{{$model.UpPlural}}(exec boil.ContextExecutor, w http.ResponseWriter,
 // zzzzzzzzzzz22 $rel.ForeignTable : {{$rel.ForeignTable}}
 // zzzzzzzzzzz33 $ftable.Columns : {{$ftable.Columns}}
 
-func (o *{{$model.UpSingular}}) Agregar{{$ftable.UpPlural}}(TX boil.ContextTransactor, hijos ...*{{$ftable.UpSingular}}) error {
+//{{/* range $column := .Table.Columns */}}
+//{{/* else if eq $column.Type "null.String" */}}
+//$ftable.Column $rel.ForeignColumn
+//$ftable.Column.Type:: no
+//$rel.Column:: {{$rel.Column}}
+//$ftable.Column:: no
+//$rel.ForeignColumn.Type:: no
+//$rel.Table.Columns:: {{/* $rel.Table.Columns */}}
+//$rel.ForeignTable.Columns:: {{/* $rel.ForeignTable.Columns */}}
+//$table.Columns:: {{$table.Columns}}
+//$ftable.Columns:: {{$ftable.Columns}}
+//$ltable.Columns:: {{$ltable.Columns}}
+
+// ñññññ
+
+
+//func (o *{{$model.UpSingular}}) Agregar{{$ftable.UpPlural}}(TX boil.ContextTransactor, hijos ...*{{$ftable.UpSingular}}) error {
+func (o *{{$model.UpSingular}}) Agregar{{$relAlias.Local}}(TX boil.ContextTransactor, hijos ...*{{$ftable.UpSingular}}) error {
+	{{if $tieneFeCre -}}
 	var ahora = time.Now()
+	{{- else if $tieneFeMod -}}
+	var ahora = time.Now()
+	{{- end}}
 
 	for i, _ := range hijos {
-		hijos[i].{{$fcol}} = o.Llave
+		//hijos[i].{{$fcol}} = o.Llave
+		{{range $clm := (getTable $.Tables $rel.ForeignTable).Columns -}}
+			{{- if eq $clm.Name $rel.ForeignColumn -}}
+				{{- if eq $clm.Type "null.String" -}}
+				hijos[i].{{$fcol}} = null.NewString(o.Llave, true)
+				{{else -}}
+				hijos[i].{{$fcol}} = o.Llave
+				{{end}}
+			{{end}}
+		{{end}}
 
 		var llave string
 		var err error

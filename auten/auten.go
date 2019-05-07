@@ -1,97 +1,71 @@
-// Autenticación web mediante parmámetros "correo" y "contraseña"
 package auten
 
 import (
-	"crypto/rsa"
-	"database/sql"
+	"context"
 	"errors"
+	"log"
 	"net/http"
-	"time"
+	"strings"
+
+	firebase "firebase.google.com/go"
+	"google.golang.org/api/option"
 )
-
-type Datos struct {
-	LlaveUsuario string
-	LlaveEntidad string
-	Token        string
-	BD           *sql.DB
-}
-
-/*func Abc() string {
-	connStr := "host=localhost user=postgres dbname=servicios_salud sslmode=disable password=postgres"
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var llave string
-	err = db.QueryRow("SELECT llave FROM personas WHERE tipo_identificación = $1 limit 1", "CC").Scan(&llave)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println("\n SIPPPPPPPPPPPP::: ", llave)
-
-	log.Println(usuarioPorCorreo(db, "saulortega.co@gmail.com"))
-
-	return llave
-}*/
 
 var (
-	CorreoNoRecibido     = errors.New("No se recibió la dirección de correo electrónico.")
-	ContraseñaNoRecibida = errors.New("No se recibió la contraseña.")
-	ContraseñaErrónea    = errors.New("Contraseña errónea.")
+	CredencialesAuten string
 )
 
-func Ingreso(nombreBaseBD string, r *http.Request, BDG *sql.DB, RSAPrivateKey *rsa.PrivateKey, tiempo time.Duration) (*Datos, error) {
-	var datos = new(Datos)
-	var hash string
-
-	cor, con, err := credencialesDesdeRequest(r)
-	if err != nil {
-		return datos, err
+func VerificarTokenDesdeRequest(r *http.Request) (error, int) {
+	hdr := r.Header.Get("Authorization")
+	if hdr == "" || strings.TrimSpace(strings.ToLower(hdr)) == "bearer" {
+		return errors.New("No se recibió el token de autenticación."), http.StatusUnauthorized
 	}
 
-	datos.LlaveUsuario, datos.LlaveEntidad, hash, err = datosSegúnCorreo(BDG, cor)
-	if err != nil {
-		return datos, err
+	pdzs := strings.Split(hdr, "Bearer ")
+	if len(pdzs) != 2 || pdzs[0] != "" || pdzs[1] == "" {
+		return errors.New("Encabezado de autenticación erróneo."), http.StatusBadRequest
 	}
 
-	err = ComprobarContraseña(hash, con)
-	if err != nil {
-		return datos, err
-	}
-
-	datos.Token, err = CrearToken(RSAPrivateKey, datos.LlaveUsuario, tiempo)
-	if err != nil {
-		return datos, err
-	}
-
-	datos.BD, err = obtenerConexiónBD(nombreBaseBD, datos.LlaveEntidad)
-	if err != nil {
-		return datos, err
-	}
-
-	return datos, nil
+	return VerificarToken(pdzs[1])
 }
 
-func Sesión(nombreBaseBD string, r *http.Request, BD *sql.DB, RSAPublicKey *rsa.PublicKey) (*Datos, error) {
-	var datos = new(Datos)
-	//var hash string
-
-	_, claims, err := ComprobarToken(r, RSAPublicKey)
-	if err != nil {
-		return datos, err
-	}
-
-	datos.LlaveUsuario, datos.LlaveEntidad, _, err = datosSegúnLlaveUsuario(BD, claims.Iden)
-	if err != nil {
-		return datos, err
-	}
-
-	datos.BD, err = obtenerConexiónBD(nombreBaseBD, datos.LlaveEntidad)
-	if err != nil {
-		return datos, err
-	}
-
-	return datos, nil
+func VerificarToken(tkn string) (error, int) {
+	return VerificarTokenFirebase(tkn)
 }
+
+func VerificarTokenFirebase(tkn string) (error, int) {
+	if CredencialesAuten == "" {
+		log.Println("[683862] Falta especificar el archivo de credenciales del proyecto de autenticación de Firebase en la variable auten.CredencialesAuten")
+		return errors.New("Ocurrió un error. [683862]"), http.StatusInternalServerError
+	}
+
+	opt := option.WithCredentialsFile(CredencialesAuten)
+	app, err := firebase.NewApp(context.Background(), nil, opt)
+	if err != nil {
+		log.Println("[642023]", err)
+		return errors.New("Ocurrió un error. [642023]"), http.StatusInternalServerError
+	}
+
+	client, err := app.Auth(context.Background())
+	if err != nil {
+		log.Println("[491533]", err)
+		return errors.New("Ocurrió un error. [491533]"), http.StatusInternalServerError
+	}
+
+	_, err = client.VerifyIDToken(context.Background(), tkn)
+	if err != nil {
+		log.Println("[368432]", err)
+		var te string
+		if strings.Contains(err.Error(), "ID token has expired") {
+			te = "Su sesión caducó. Ingrese nuevamente."
+		} else {
+			te = "No se pudo comprobar la autenticación."
+		}
+
+		return errors.New(te), http.StatusUnauthorized
+	}
+
+	return nil, http.StatusOK
+}
+
+// Falta verificar usuario registrado en BD local
