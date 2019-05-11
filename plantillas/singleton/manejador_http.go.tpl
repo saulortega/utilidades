@@ -2,6 +2,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/saulortega/utilidades/responder"
 	"github.com/saulortega/utilidades/auten"
@@ -13,11 +14,24 @@ import (
 {{$raíz := .}}
 
 
+var AllowHeaders = []string{}
+
+func allowedHeaders() string {
+	var H = []string{"Origin", "Authorization", "X-Requested-With", "Content-Type", "Accept"}
+	for _, h := range AllowHeaders {
+		H = append(H, h)
+	}
+
+	return strings.Join(H, ", ")
+}
+
+
 func ManejadorHTTP(w http.ResponseWriter, r *http.Request) {
 
 	//Al menos para pruebas. Probablemente se deba quitar...
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, Authorization, X-Requested-With, Content-Type, Accept") //necesario para dominio cruzado. Quitar después ...
+	//w.Header().Set("Access-Control-Allow-Headers", "Origin, Authorization, X-Requested-With, Content-Type, Accept") //necesario para dominio cruzado. Quitar después ...
+	w.Header().Set("Access-Control-Allow-Headers", allowedHeaders())
 	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE")                                  //No necesario para dominio cruzado. Plantearse ponerlo siempre...
 	w.Header().Set("Access-Control-Expose-Headers", "X-Msj")                                               //Necesario en CORS para poder ver este header desde axios
 	w.Header().Add("Access-Control-Expose-Headers", "X-Llave")
