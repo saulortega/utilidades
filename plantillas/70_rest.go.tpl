@@ -98,15 +98,27 @@ var OmitirAlConstruir{{$model.UpSingular}} = []string{}
 
 // Los errores deben ser aptos para responder al cliente.
 
+var DespuésDeObtener{{$model.UpSingular}} = func(boil.ContextExecutor, *{{$model.UpSingular}}, *http.Request) error {
+	return nil
+}
+
+var AntesDeListar{{$model.UpPlural}} = func(boil.ContextExecutor, *http.Request, *[]qm.QueryMod) error {
+	return nil
+}
+
+var DespuésDeListar{{$model.UpPlural}} = func(boil.ContextExecutor, []*{{$model.UpSingular}}, *http.Request) error {
+	return nil
+}
+
 var AntesDeEditar{{$model.UpSingular}} = func(boil.ContextTransactor, *{{$model.UpSingular}}, *http.Request) error {
 	return nil
 }
 
-var AntesDeCrear{{$model.UpSingular}} = func(boil.ContextTransactor, *{{$model.UpSingular}}, *http.Request) error {
+var DespuésDeEditar{{$model.UpSingular}} = func(boil.ContextTransactor, *{{$model.UpSingular}}, *http.Request) error {
 	return nil
 }
 
-var DespuésDeEditar{{$model.UpSingular}} = func(boil.ContextTransactor, *{{$model.UpSingular}}, *http.Request) error {
+var AntesDeCrear{{$model.UpSingular}} = func(boil.ContextTransactor, *{{$model.UpSingular}}, *http.Request) error {
 	return nil
 }
 
@@ -124,6 +136,18 @@ func Obtener{{$model.UpSingular}}(exec boil.ContextExecutor, w http.ResponseWrit
 	var err error
 	var llave string
 
+	err = AntesDeTodo(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
+
+	err = AntesDeObtener(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
+
 	llave, err = LlaveDesdeURL(r)
 	if err != nil || llave == "" {
 		responder.LlaveNoRecibida(w)
@@ -133,6 +157,12 @@ func Obtener{{$model.UpSingular}}(exec boil.ContextExecutor, w http.ResponseWrit
 	obj, err = Find{{$model.UpSingular}}(context.Background(), exec, llave)
 	if err != nil {
 		responder.NotFoundOrInternal(w, err, llave)
+		return
+	}
+
+	err = DespuésDeObtener{{$model.UpSingular}}(exec, obj, r)
+	if err != nil {
+		responder.BadRequest(w, err)
 		return
 	}
 
@@ -149,6 +179,18 @@ func Crear{{$model.UpSingular}}(exec boil.ContextExecutor, w http.ResponseWriter
 	var Obj = new({{$model.UpSingular}})
 	var TX = new(sql.Tx)
 	var err error
+
+	err = AntesDeTodo(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
+
+	err = AntesDeCrear(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
 
 	err = Obj.Construir(r)
 	if err != nil {
@@ -184,6 +226,18 @@ func Crear{{$model.UpPlural}}PorCampo(exec boil.ContextExecutor, w http.Response
 	var Obj = new({{$model.UpSingular}})
 	var TX = new(sql.Tx)
 	var err error
+
+	err = AntesDeTodo(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
+
+	err = AntesDeCrear(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
 
 	var vals = requestValoresString(r, campo)
 	if len(vals) == 0 {
@@ -282,6 +336,17 @@ func Editar{{$model.UpSingular}}(exec boil.ContextExecutor, w http.ResponseWrite
 	var err error
 	var llave string
 
+	err = AntesDeTodo(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
+
+	err = AntesDeEditar(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
 
 	llave, err = LlaveDesdeURL(r)
 	if err != nil || llave == "" {
@@ -358,6 +423,17 @@ func Eliminar{{$model.UpSingular}}PorBD(exec boil.ContextExecutor, w http.Respon
 	var err error
 	var llave string
 
+	err = AntesDeTodo(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
+
+	err = AntesDeEliminar(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
 
 	llave, err = LlaveDesdeURL(r)
 	if err != nil || llave == "" {
@@ -387,6 +463,18 @@ func Eliminar{{$model.UpSingular}}Real(exec boil.ContextExecutor, w http.Respons
 	var Obj = new({{$model.UpSingular}})
 	var err error
 	var llave string
+
+	err = AntesDeTodo(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
+
+	err = AntesDeEliminar(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
 
 	llave, err = LlaveDesdeURL(r)
 	if err != nil || llave == "" {
@@ -552,6 +640,18 @@ func Build{{$model.UpPlural}}With{{titleCase .Column}}s(ids []{{if .Nullable}}nu
 
 
 func Listar{{$model.UpPlural}}(exec boil.ContextExecutor, w http.ResponseWriter, r *http.Request) {
+	err := AntesDeTodo(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
+
+	err = AntesDeListar(exec, r)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
+
 	filtrosPaginación, err := paginación(r, {{$model.DownSingular}}Columns, {{$tieneFechaCreación}})
 	if err != nil {
 		responder.InternalServerError(w)
@@ -612,6 +712,12 @@ func Listar{{$model.UpPlural}}(exec boil.ContextExecutor, w http.ResponseWriter,
 		return
 	}
 
+	err = AntesDeListar{{$model.UpPlural}}(exec, r, &filtros)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
+
 	Total, err := {{$model.UpPlural}}(filtros...).Count(context.Background(), exec)
 	if err != nil {
 		responder.InternalServerError(w)
@@ -628,6 +734,12 @@ func Listar{{$model.UpPlural}}(exec boil.ContextExecutor, w http.ResponseWriter,
 	} else if err != nil {
 		responder.InternalServerError(w)
 		log.Println(err)
+		return
+	}
+
+	err = DespuésDeListar{{$model.UpPlural}}(exec, Objs, r)
+	if err != nil {
+		responder.BadRequest(w, err)
 		return
 	}
 

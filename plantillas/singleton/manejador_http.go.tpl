@@ -7,6 +7,7 @@ import (
 	"github.com/saulortega/utilidades/responder"
 	"github.com/saulortega/utilidades/auten"
 	"github.com/saulortega/utilidades/notificación"
+	"github.com/volatiletech/sqlboiler/boil"
 )
 
 // pendiente autenticación...
@@ -23,6 +24,31 @@ func allowedHeaders() string {
 	}
 
 	return strings.Join(H, ", ")
+}
+
+
+var AntesDeObtener = func (exec boil.ContextExecutor, r *http.Request) error {
+	return nil
+}
+
+var AntesDeListar = func (exec boil.ContextExecutor, r *http.Request) error {
+	return nil
+}
+
+var AntesDeEditar = func (exec boil.ContextExecutor, r *http.Request) error {
+	return nil
+}
+
+var AntesDeCrear = func (exec boil.ContextExecutor, r *http.Request) error {
+	return nil
+}
+
+var AntesDeEliminar = func (exec boil.ContextExecutor, r *http.Request) error {
+	return nil
+}
+
+var AntesDeTodo = func (exec boil.ContextExecutor, r *http.Request) error {
+	return nil
 }
 
 
