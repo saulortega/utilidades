@@ -130,6 +130,10 @@ var Reconstruir{{$model.UpSingular}}AlObtener = func(exec boil.ContextExecutor, 
 	return interface{}(Obj), nil
 }
 
+var Reconstruir{{$model.UpPlural}}AlListar = func(exec boil.ContextExecutor, Objs []*{{$model.UpSingular}}) (interface{}, error) {
+	return interface{}(Objs), nil
+}
+
 func Obtener{{$model.UpSingular}}(exec boil.ContextExecutor, w http.ResponseWriter, r *http.Request) {
 	var obj = new({{$model.UpSingular}})
 	var Obj interface{}
@@ -154,7 +158,7 @@ func Obtener{{$model.UpSingular}}(exec boil.ContextExecutor, w http.ResponseWrit
 		return
 	}
 
-	obj, err = Find{{$model.UpSingular}}(context.Background(), exec, llave)
+	obj, err = Find{{$model.UpSingular}}(context.TODO(), exec, llave)
 	if err != nil {
 		responder.NotFoundOrInternal(w, err, llave)
 		return
@@ -314,7 +318,7 @@ func (Obj *{{$model.UpSingular}}) Crear(exec boil.ContextExecutor, TX boil.Conte
 	Obj.FechaModificación = time.Now()
 	{{- end}}
 
-	err = Obj.Insert(context.Background(), TX, boil.Infer()) // ---------------------------- pendiente ver si agregar lista blanca en vez del Infer -----------------------------
+	err = Obj.Insert(context.TODO(), TX, boil.Infer()) // ---------------------------- pendiente ver si agregar lista blanca en vez del Infer -----------------------------
 	if err != nil {
 		responder.InternalServerError(w)
 		log.Println(err)
@@ -354,7 +358,7 @@ func Editar{{$model.UpSingular}}(exec boil.ContextExecutor, w http.ResponseWrite
 		return
 	}
 
-	Obj, err = Find{{$model.UpSingular}}(context.Background(), exec, llave)
+	Obj, err = Find{{$model.UpSingular}}(context.TODO(), exec, llave)
 	if err != nil {
 		responder.NotFoundOrInternal(w, err, llave)
 		return
@@ -384,7 +388,7 @@ func Editar{{$model.UpSingular}}(exec boil.ContextExecutor, w http.ResponseWrite
 	Obj.FechaModificación = time.Now()
 	{{- end}}
 
-	_, err = Obj.Update(context.Background(), TX, boil.Infer()) // ---------------------------- pendiente ver si agregar lista blanca en vez del Infer -----------------------------
+	_, err = Obj.Update(context.TODO(), TX, boil.Infer()) // ---------------------------- pendiente ver si agregar lista blanca en vez del Infer -----------------------------
 	if err != nil {
 		responder.InternalServerError(w)
 		log.Println(err)
@@ -441,14 +445,14 @@ func Eliminar{{$model.UpSingular}}PorBD(exec boil.ContextExecutor, w http.Respon
 		return
 	}
 
-	Obj, err = Find{{$model.UpSingular}}(context.Background(), exec, llave)
+	Obj, err = Find{{$model.UpSingular}}(context.TODO(), exec, llave)
 	if err != nil {
 		responder.NotFoundOrInternal(w, err, llave)
 		return
 	}
 
 	Obj.FechaEliminación = null.NewTime(time.Now(), true)
-	_, err = Obj.Update(context.Background(), exec, boil.Whitelist("deleted_at"))
+	_, err = Obj.Update(context.TODO(), exec, boil.Whitelist("deleted_at"))
 	if err != nil {
 		responder.InternalServerError(w)
 		log.Println(err)
@@ -482,13 +486,13 @@ func Eliminar{{$model.UpSingular}}Real(exec boil.ContextExecutor, w http.Respons
 		return
 	}
 
-	Obj, err = Find{{$model.UpSingular}}(context.Background(), exec, llave)
+	Obj, err = Find{{$model.UpSingular}}(context.TODO(), exec, llave)
 	if err != nil {
 		responder.NotFoundOrInternal(w, err, llave)
 		return
 	}
 
-	_, err = Obj.Delete(context.Background(), exec)
+	_, err = Obj.Delete(context.TODO(), exec)
 	if err != nil {
 		responder.InternalServerError(w)
 		log.Println(err)
@@ -718,7 +722,7 @@ func Listar{{$model.UpPlural}}(exec boil.ContextExecutor, w http.ResponseWriter,
 		return
 	}
 
-	Total, err := {{$model.UpPlural}}(filtros...).Count(context.Background(), exec)
+	Total, err := {{$model.UpPlural}}(filtros...).Count(context.TODO(), exec)
 	if err != nil {
 		responder.InternalServerError(w)
 		log.Println(err)
@@ -727,7 +731,7 @@ func Listar{{$model.UpPlural}}(exec boil.ContextExecutor, w http.ResponseWriter,
 
 	filtros = append(filtros, filtrosPaginación...)
 
-	Objs, err := {{$model.UpPlural}}(filtros...).All(context.Background(), exec)
+	Objs, err := {{$model.UpPlural}}(filtros...).All(context.TODO(), exec)
 	if err == sql.ErrNoRows {
 		responder.ListadoVacío(w)
 		return
@@ -743,8 +747,14 @@ func Listar{{$model.UpPlural}}(exec boil.ContextExecutor, w http.ResponseWriter,
 		return
 	}
 
+	var ObjsRctds interface{}
+	ObjsRctds, err = Reconstruir{{$model.UpPlural}}AlListar(exec, Objs)
+	if err != nil {
+		responder.BadRequest(w, err)
+		return
+	}
 
-	responder.Listado(w, Objs, Total)
+	responder.Listado(w, ObjsRctds, Total)
 }
 
 
@@ -828,7 +838,7 @@ func (o *{{$model.UpSingular}}) Agregar{{$relAlias.Local}}(TX boil.ContextTransa
 		hijos[i].FechaModificación = ahora
 		{{- end}}
 
-		err = hijos[i].Insert(context.Background(), TX, boil.Infer())
+		err = hijos[i].Insert(context.TODO(), TX, boil.Infer())
 		if err != nil {
 			log.Println(err)
 			return err
