@@ -134,6 +134,11 @@ var Reconstruir{{$model.UpPlural}}AlListar = func(exec boil.ContextExecutor, Obj
 	return interface{}(Objs), nil
 }
 
+var Listar{{$model.UpPlural}}Personalizado = func(exec boil.ContextExecutor, r *http.Request, filtros *[]qm.QueryMod) (interface{}, int64, error) {
+	// Sobrescribe DespuésDeListar{{$model.UpPlural}} y Reconstruir{{$model.UpPlural}}AlListar
+	return interface{}([]string{}), -1, nil
+}
+
 func Obtener{{$model.UpSingular}}(exec boil.ContextExecutor, w http.ResponseWriter, r *http.Request) {
 	var obj = new({{$model.UpSingular}})
 	var Obj interface{}
@@ -719,6 +724,20 @@ func Listar{{$model.UpPlural}}(exec boil.ContextExecutor, w http.ResponseWriter,
 	err = AntesDeListar{{$model.UpPlural}}(exec, r, &filtros)
 	if err != nil {
 		responder.BadRequest(w, err)
+		return
+	}
+
+	ObjsPsnlzds, Ttl, err := Listar{{$model.UpPlural}}Personalizado(exec, r, &filtros)
+	if Ttl >= 0 {
+		if err != nil {
+			responder.BadRequest(w, err)
+			return
+		} else if Ttl == 0 {
+			responder.ListadoVacío(w)
+			return
+		}
+
+		responder.Listado(w, ObjsPsnlzds, Ttl)
 		return
 	}
 
