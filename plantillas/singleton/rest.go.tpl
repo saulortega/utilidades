@@ -317,7 +317,7 @@ func errorCampoVacíoSiNoNulo(col string, noNulo bool) error {
 //
 //
 
-func paginación(r *http.Request, columnas []string, hayFechaCreación bool) ([]qm.QueryMod, error) {
+func FiltroPaginación(r *http.Request, columnas []string, hayFechaCreación bool) ([]qm.QueryMod, error) {
 	var qms = []qm.QueryMod{}
 
 	I := filtro.NewPagingAndSorting(columnas...)
@@ -344,7 +344,7 @@ func paginación(r *http.Request, columnas []string, hayFechaCreación bool) ([]
 	return qms, nil
 }
 
-func condiciones(r *http.Request, columnas ...filtro.Column) ([]qm.QueryMod, error) {
+func FiltroCondiciones(r *http.Request, columnas ...filtro.Column) ([]qm.QueryMod, error) {
 	var qms = []qm.QueryMod{}
 
 	F := filtro.NewSearching(columnas)

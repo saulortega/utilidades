@@ -661,7 +661,7 @@ func Listar{{$model.UpPlural}}(exec boil.ContextExecutor, w http.ResponseWriter,
 		return
 	}
 
-	filtrosPaginación, err := paginación(r, {{$model.DownSingular}}Columns, {{$tieneFechaCreación}})
+	filtrosPaginación, err := FiltroPaginación(r, {{$model.DownSingular}}Columns, {{$tieneFechaCreación}})
 	if err != nil {
 		responder.InternalServerError(w)
 		log.Println(err)
@@ -714,7 +714,7 @@ func Listar{{$model.UpPlural}}(exec boil.ContextExecutor, w http.ResponseWriter,
 	{{end -}}
 	{{end}}
 
-	filtros, err := condiciones(r, Cols...)
+	filtros, err := FiltroCondiciones(r, Cols...)
 	if err != nil {
 		responder.InternalServerError(w)
 		log.Println(err)
